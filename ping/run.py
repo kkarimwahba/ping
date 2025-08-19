@@ -3,13 +3,20 @@ Server Monitoring Script
 Checks if the server IP, API subdomain, and domain are online.
 Sends email alerts ONLY when at least one target is UP.
 """
-
+import os
 import smtplib
 import socket
 import time
 from email.mime.text import MIMEText
+from dotenv import load_dotenv
 import requests
 
+# ========================
+# Load Environment Variables
+# ========================
+load_dotenv()
+SMTP_USER = os.getenv("SMTP_USER")
+SMTP_PASS = os.getenv("SMTP_PASS")
 # ========================
 # Monitored Targets
 # ========================
@@ -22,7 +29,7 @@ TARGETS = {
 # ========================
 # Email Configuration
 # ========================
-EMAILS = ["karimwahba53@gmail.com", "khaledamrahmed0@gmail.com", "khaledamrahmed0@gmail.com"]
+EMAILS = ["karimwahba63@gmail.com", "khaledamrahmed0@gmail.com"]
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_USER = "karimwahba53@gmail.com"     # Replace with your Gmail
