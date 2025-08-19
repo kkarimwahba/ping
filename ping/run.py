@@ -1,50 +1,93 @@
-import requests
+"""
+Server Monitoring Script
+Checks if the server IP, API subdomain, and domain are online.
+Sends email alerts ONLY when at least one target is UP.
+"""
+
 import smtplib
-from email.mime.text import MIMEText
+import socket
 import time
+from email.mime.text import MIMEText
+import requests
 
-# Server details
-server_ip = "91.99.75.25"
-api_url = "http://api.thedesigngrit.com"
-phone_numbers = ["01020180941", "01115570635"]
-emails = ["karimwahba53@gmail.com", "khaledamrahmed0@gmail.com"]
+# ========================
+# Monitored Targets
+# ========================
+TARGETS = {
+    "Server IP": "91.99.79.25",  # checked with socket
+    "API Subdomain": "https://api.thedesigngrit.com",
+    "Main Domain": "https://thedesigngrit.com"
+}
 
-# Email configuration
-smtp_server = "smtp.gmail.com"
-smtp_port = 587
-smtp_user = "your_email@gmail.com"  # Replace with your email
-smtp_password = "your_email_password"  # Replace with your email password
+# ========================
+# Email Configuration
+# ========================
+EMAILS = ["karimwahba53@gmail.com", "khaledamrahmed0@gmail.com", "khaledamrahmed0@gmail.com"]
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_USER = "karimwahba53@gmail.com"     # Replace with your Gmail
+SMTP_PASS = "reok azbe omwl vgwe"                           # Use Gmail App Password
 
-def send_email(subject, body):
+
+def send_email(subject: str, body: str) -> None:
+    """Send an email notification to all configured recipients."""
     msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = smtp_user
-    msg['To'] = ", ".join(emails)
+    msg["Subject"] = subject
+    msg["From"] = SMTP_USER
+    msg["To"] = ", ".join(EMAILS)
 
-    with smtplib.SMTP(smtp_server, smtp_port) as server:
-        server.starttls()
-        server.login(smtp_user, smtp_password)
-        server.sendmail(smtp_user, emails, msg.as_string())
-
-def check_server():
     try:
-        response = requests.get(api_url)
-        if response.status_code == 200:
-            return True
-    except requests.exceptions.RequestException:
-        return False
-    return False
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.sendmail(SMTP_USER, EMAILS, msg.as_string())
+        print("✅ Email sent successfully.")
+    except smtplib.SMTPException as e:
+        print(f"❌ Failed to send email: {e}")
 
-def main():
+
+def check_target(name: str, url: str) -> bool:
+    """Check if a given target (IP/domain/subdomain) is online."""
+    try:
+        if name == "Server IP":  # check socket reachability
+            socket.create_connection((url, 80), timeout=5)
+            print(f"✅ {name} ({url}) is UP.")
+            return True
+        else:  # check with HTTP request
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                print(f"✅ {name} ({url}) is UP.")
+                return True
+            else:
+                print(f"⚠️ {name} ({url}) returned {response.status_code}.")
+                return False
+    except (requests.exceptions.RequestException, socket.error) as e:
+        print(f"❌ {name} ({url}) is DOWN. Error: {e}")
+        return False
+
+
+def main() -> None:
+    """Continuously monitor all targets every 60 seconds."""
+    already_notified = False  # avoid spamming
+
     while True:
-        if check_server():
-            message = "The server is running!"
-            send_email("Server Status Alert", message)
-            print("Email sent!")
-        else:
-            print("Server is down.")
-        
-        time.sleep(60)  # Check every minute
+        up_targets = []
+
+        for name, url in TARGETS.items():
+            if check_target(name, url):
+                up_targets.append(name)
+
+        if up_targets and not already_notified:
+            body = "✅ The following targets are UP and running:\n" + "\n".join(up_targets)
+            send_email("✅ Server Status: UP", body)
+            already_notified = True
+        elif not up_targets:
+            print("🌍 No targets are UP right now.")
+            already_notified = False  # reset so when it comes back up we notify again
+
+        print("🔄 Waiting 60 seconds before next check...\n")
+        time.sleep(60)
+
 
 if __name__ == "__main__":
     main()
